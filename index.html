@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claim Your Airdrop · 8Square Chess</title>
+  <meta name="description" content="Official airdrop portal for 8Square Chess.">
+  <meta name="theme-color" content="#0a0a0a">
+  <link rel="icon" href="logo.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <main class="page">
+
+    <!-- Header: logo (no text baked in), project name written below -->
+    <header class="header">
+      <div class="logo"><a href="index.html" data-keepref aria-label="8Square Chess home"><img alt="8Square Chess logo"
+            src="logo.jpg"></a></div>
+      <div class="brand">8Square Chess</div>
+      <p class="subtitle">Official Airdrop Portal</p>
+    </header>
+
+    <!-- Page switcher -->
+    <nav class="switch" aria-label="Airdrop type">
+      <a href="index.html" data-keepref aria-current="page">Standard Airdrop</a>
+      <a href="top-tier.html" data-keepref>Top Tier (200+ SOL)</a>
+    </nav>
+
+    <!-- Claim card -->
+    <section class="card" aria-labelledby="title">
+      <div class="card-head">
+        <h1 id="title">Claim Your Airdrop</h1>
+      </div>
+      <p class="lead">Enter your Solana wallet address below to claim your tokens.</p>
+
+      <form class="claim-form" data-tier="standard" novalidate autocomplete="off">
+        <div class="field">
+          <label>Solana wallet address</label>
+          <input class="f-wallet" type="text" placeholder="Enter your Solana wallet address" spellcheck="false"
+            autocapitalize="off" autocorrect="off">
+        </div>
+        <div class="field">
+          <label>Referral <span class="opt">(optional)</span></label>
+          <input class="f-ref" type="text" placeholder="Referrer's wallet address" spellcheck="false"
+            autocapitalize="off" autocorrect="off">
+        </div>
+        <p class="error" role="alert" aria-live="polite"></p>
+        <button class="btn" type="submit">Claim Airdrop</button>
+      </form>
+
+      <div class="success" role="status" aria-live="polite">
+        <svg class="check" viewBox="0 0 36 36" aria-hidden="true">
+          <circle cx="18" cy="18" r="15.5"></circle>
+          <path d="M11 18.5l5 5 9-10"></path>
+        </svg>
+        <div class="success-body">
+          <p><strong>Successfully submitted.</strong><br>Your airdrop will be credited manually soon.</p>
+          <div class="share">
+            <small>Your referral link. Share it to refer others.</small>
+            <div class="share-row"><input class="f-link" type="text" readonly><button type="button"
+                class="f-copy">Copy</button></div>
+          </div>
+        </div>
+      </div>
+
+      <p class="other">Holding 200+ SOL? <a href="top-tier.html" data-keepref>Join the Top Tier whitelist</a></p>
+    </section>
+
+    <!-- Disclaimer -->
+    <section class="disclaimer" aria-labelledby="disc-title">
+      <h2 id="disc-title">Important Disclaimer</h2>
+      <ul>
+        <li>Tokens will be sent to approved wallets within 24–48 hours after review.</li>
+        <li>Submitting your wallet address does not guarantee eligibility.</li>
+        <li class="warn">Do not send any SOL or tokens to any address.</li>
+        <li>Only one claim per wallet address is allowed.</li>
+        <li>We reserve the right to reject any submission.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>© 2026 8Square Chess. All rights reserved.</footer>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="app.js"></script>
+</body>
+
+</html>
