@@ -9,14 +9,16 @@
 
     /* ---------- CONFIGURATION ---------- */
 
-const EMAILJS_PUBLIC_KEY = "kMWj2xk6WsoeK0IAm";
+    const EMAILJS_PUBLIC_KEY = "kMWj2xk6WsoeK0IAm";
     const SERVICE_ID = "service_axakgsj";
     const TEMPLATE_ID = "template_c6s5dck";
 
     const RPC_URL = "https://api.mainnet-beta.solana.com";
     const TOP_TIER_MIN_SOL = 200;
     const COOLDOWN_SECONDS = 8;
+
     const STORAGE_KEY = "8square_submissions";
+    const REFERRAL_CODES_KEY = "8square_referral_codes";
 
     // Initialize EmailJS
     emailjs.init({
@@ -27,19 +29,124 @@ const EMAILJS_PUBLIC_KEY = "kMWj2xk6WsoeK0IAm";
 
     const BASE58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
+    /* ---------- REFERRAL CODE SETTINGS ---------- */
+
+    const REFERRAL_PATTERN = /^8SQ-[A-Z0-9]{6}$/;
+    const REFERRAL_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+    function getReferralCodes() {
+
+        try {
+            return JSON.parse(
+                localStorage.getItem(REFERRAL_CODES_KEY)
+            ) || {};
+
+        } catch (e) {
+            return {};
+        }
+
+    }
+
+    function saveReferralCodes(codes) {
+
+        try {
+            localStorage.setItem(
+                REFERRAL_CODES_KEY,
+                JSON.stringify(codes)
+            );
+        } catch (e) {
+            // Ignore storage errors
+        }
+
+    }
+
+    function generateReferralCode(codes) {
+
+        let code;
+        let attempts = 0;
+
+        do {
+
+            let randomPart = "";
+
+            const randomValues = new Uint32Array(6);
+
+            if (window.crypto && window.crypto.getRandomValues) {
+
+                window.crypto.getRandomValues(randomValues);
+
+                for (let i = 0; i < 6; i++) {
+                    randomPart += REFERRAL_CHARS[
+                        randomValues[i] % REFERRAL_CHARS.length
+                    ];
+                }
+
+            } else {
+
+                for (let i = 0; i < 6; i++) {
+                    randomPart += REFERRAL_CHARS[
+                        Math.floor(Math.random() * REFERRAL_CHARS.length)
+                    ];
+                }
+
+            }
+
+            code = "8SQ-" + randomPart;
+            attempts++;
+
+        } while (
+            Object.values(codes).includes(code) &&
+            attempts < 100
+        );
+
+        if (Object.values(codes).includes(code)) {
+            throw new Error("Could not generate a unique referral code.");
+        }
+
+        return code;
+
+    }
+
+    function getOrCreateReferralCode(address) {
+
+        const codes = getReferralCodes();
+
+        if (codes[address]) {
+            return codes[address];
+        }
+
+        return generateReferralCode(codes);
+
+    }
+
+    function saveUserReferralCode(address, code) {
+
+        const codes = getReferralCodes();
+
+        codes[address] = code;
+
+        saveReferralCodes(codes);
+
+    }
+
     /* ---------- REFERRAL URL ---------- */
 
     const params = new URLSearchParams(window.location.search);
-    const refFromUrl = (params.get('ref') || '').trim();
+    const refFromUrl = (params.get('ref') || '').trim().toUpperCase();
+
     const baseUrl = window.location.href.split(/[?#]/)[0];
 
-    if (refFromUrl && BASE58.test(refFromUrl)) {
+    if (refFromUrl && REFERRAL_PATTERN.test(refFromUrl)) {
 
         document.querySelectorAll('a[data-keepref]').forEach(function (a) {
+
+            const href = a.getAttribute('href').split('?')[0];
+
             a.setAttribute(
                 'href',
-                a.getAttribute('href').split('?')[0] + '?ref=' + refFromUrl
+                href + '?ref=' + encodeURIComponent(refFromUrl)
             );
+
         });
 
     }
@@ -59,10 +166,15 @@ const EMAILJS_PUBLIC_KEY = "kMWj2xk6WsoeK0IAm";
     function save(entry) {
 
         try {
+
             const list = getSaved();
+
             list.push(entry);
 
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+            localStorage.setItem(
+                STORAGE_KEY,
+                JSON.stringify(list)
+            );
 
         } catch (e) {
             // Ignore storage errors
@@ -81,25 +193,31 @@ const EMAILJS_PUBLIC_KEY = "kMWj2xk6WsoeK0IAm";
         }, 9000);
 
         return fetch(RPC_URL, {
+
             method: 'POST',
+
             headers: {
                 'Content-Type': 'application/json'
             },
+
             body: JSON.stringify({
+
                 jsonrpc: '2.0',
                 id: 1,
                 method: 'getBalance',
                 params: [address]
+
             }),
+
             signal: ctrl.signal
 
         })
+
         .then(function (r) {
             return r.json();
         })
-        .then(function (j) {
 
-            clearTimeout(timer);
+        .then(function (j) {
 
             if (!j.result || typeof j.result.value !== 'number') {
                 throw new Error('Bad RPC response');
@@ -108,11 +226,9 @@ const EMAILJS_PUBLIC_KEY = "kMWj2xk6WsoeK0IAm";
             return j.result.value / 1e9;
 
         })
-        .catch(function (err) {
 
+        .finally(function () {
             clearTimeout(timer);
-            throw err;
-
         });
 
     }
@@ -122,12 +238,21 @@ const EMAILJS_PUBLIC_KEY = "kMWj2xk6WsoeK0IAm";
     function sendToServer(entry) {
 
         return emailjs.send(
+
             SERVICE_ID,
+
             TEMPLATE_ID,
+
             {
+
                 wallet: entry.address,
-                referral: entry.ref || "No referral"
+
+                referral: entry.ref || "No referral",
+
+                referral_code: entry.referralCode
+
             }
+
         );
 
     }
@@ -152,7 +277,7 @@ const EMAILJS_PUBLIC_KEY = "kMWj2xk6WsoeK0IAm";
     const linkEl = card.querySelector('.f-link');
     const copyBtn = card.querySelector('.f-copy');
 
-    if (refFromUrl) {
+    if (refFromUrl && REFERRAL_PATTERN.test(refFromUrl)) {
         refEl.value = refFromUrl;
     }
 
@@ -225,7 +350,9 @@ const EMAILJS_PUBLIC_KEY = "kMWj2xk6WsoeK0IAm";
         if (navigator.clipboard && navigator.clipboard.writeText) {
 
             navigator.clipboard.writeText(linkEl.value).then(
+
                 done,
+
                 function () {
 
                     linkEl.select();
@@ -233,6 +360,7 @@ const EMAILJS_PUBLIC_KEY = "kMWj2xk6WsoeK0IAm";
                     done();
 
                 }
+
             );
 
         } else {
@@ -256,7 +384,7 @@ const EMAILJS_PUBLIC_KEY = "kMWj2xk6WsoeK0IAm";
         successEl.classList.remove('show');
 
         const address = walletEl.value.trim();
-        const ref = refEl.value.trim();
+        const ref = refEl.value.trim().toUpperCase();
 
         /* Validate wallet */
 
@@ -270,25 +398,46 @@ const EMAILJS_PUBLIC_KEY = "kMWj2xk6WsoeK0IAm";
 
         if (!BASE58.test(address)) {
 
-            setError('That doesn’t look like a valid Solana address. It should be 32–44 characters.');
+            setError(
+                'That doesn’t look like a valid Solana address. It should be 32–44 characters.'
+            );
+
             walletEl.focus();
             return;
 
         }
 
-        if (ref && !BASE58.test(ref)) {
+        /* Validate referral code */
 
-            setError('Referral must be a valid Solana wallet address.', refEl);
+        if (ref && !REFERRAL_PATTERN.test(ref)) {
+
+            setError(
+                'Please enter a valid 8Square referral code.',
+                refEl
+            );
+
             refEl.focus();
             return;
 
         }
 
-        if (ref && ref === address) {
+        /* Prevent self-referral on this browser */
 
-            setError('You can’t use your own address as a referral.', refEl);
-            refEl.focus();
-            return;
+        if (ref) {
+
+            const codes = getReferralCodes();
+
+            if (codes[address] === ref) {
+
+                setError(
+                    'You can’t use your own referral code.',
+                    refEl
+                );
+
+                refEl.focus();
+                return;
+
+            }
 
         }
 
@@ -338,25 +487,37 @@ const EMAILJS_PUBLIC_KEY = "kMWj2xk6WsoeK0IAm";
 
         }
 
+        let submittedEntry = null;
+
         /* Send submission through EmailJS */
 
         check.then(function (sol) {
 
             btn.textContent = 'Submitting…';
 
-            const entry = {
+            const referralCode = getOrCreateReferralCode(address);
+
+            submittedEntry = {
 
                 tier: tier,
+
                 address: address,
+
                 ref: ref,
+
+                referralCode: referralCode,
+
                 balance: sol,
+
                 submittedAt: new Date().toISOString()
 
             };
 
-            return sendToServer(entry).then(function () {
+            return sendToServer(submittedEntry).then(function () {
 
-                save(entry);
+                saveUserReferralCode(address, referralCode);
+
+                save(submittedEntry);
 
             });
 
@@ -368,7 +529,8 @@ const EMAILJS_PUBLIC_KEY = "kMWj2xk6WsoeK0IAm";
 
             walletEl.value = '';
 
-            linkEl.value = baseUrl + '?ref=' + address;
+            linkEl.value = baseUrl + '?ref=' +
+                encodeURIComponent(submittedEntry.referralCode);
 
             void successEl.offsetWidth;
 
@@ -390,10 +552,12 @@ const EMAILJS_PUBLIC_KEY = "kMWj2xk6WsoeK0IAm";
             if (err && err.message === 'low') {
 
                 setError(
+
                     'This wallet holds ' + err.sol.toFixed(2) +
                     ' SOL. Top Tier requires at least ' +
                     TOP_TIER_MIN_SOL +
                     ' SOL. You can still claim in the standard airdrop.'
+
                 );
 
             } else if (tier === 'top' && err && err.message !== 'low') {
